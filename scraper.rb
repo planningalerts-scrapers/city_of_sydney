@@ -1,6 +1,7 @@
 require 'scraperwiki'
 require 'rss/2.0'
 require 'date'
+require 'nokogiri'
 
 feed = RSS::Parser.parse("http://feeds.cityofsydney.nsw.gov.au/SydneyDAs", false)
 
@@ -12,7 +13,7 @@ feed.channel.items.each do |item|
   info_url = /<a href="([^"]+)"/.match(info_url)[1]
   info_url.sub! 'DAsOnExhibition/details.asp?tpk=', 'DASearch/Detail.aspx?id='
 
-  description = description.gsub(/<\/?strong>/, '')
+  description = Nokogiri::HTML.parse(description.gsub(/<\/?strong>/, '')).text
   council_ref = /<strong>\s*DA Number:\s*<\/strong>(.+)/i.match(council_ref)[1]
   exhibition_closes = /<strong>\s*Exhibition Closes:\s*<\/strong>(.+)/i.match(closing)[1]
   
