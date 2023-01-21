@@ -1,34 +1,52 @@
 require 'scraperwiki'
-require 'rss/2.0'
 require 'date'
-require 'nokogiri'
+require "mechanize"
 
-feed = RSS::Parser.parse("http://feeds.cityofsydney.nsw.gov.au/SydneyDAs", false)
+class String
+  def squish
+    string = strip
+    string.gsub!(/\s+/, ' ')
+    string
+  end
+end
 
-feed.channel.items.each do |item|
-  parts = /<p>(.*)<\/p><p>(.*)<\/p><p>(.*)<\/p><p>(.*)<\/p><p>(.*)<\/p>/.match(item.description)
+def convert_date(s)
+  Date.strptime(s, "%d/%m/%Y").to_s
+rescue ArgumentError
+  nil
+end
 
-  address, council_ref, description, closing, info_url = parts.captures
-  
-  info_url = /<a href="([^"]+)"/.match(info_url)[1]
-  info_url.sub! 'DAsOnExhibition/details.asp?tpk=', 'DASearch/Detail.aspx?id='
+agent = Mechanize.new
 
-  description = Nokogiri::HTML.parse(description.gsub(/<\/?strong>/, '')).text
-  council_ref = /<strong>\s*DA Number:\s*<\/strong>(.+)/i.match(council_ref)[1]
-  exhibition_closes = /<strong>\s*Exhibition Closes:\s*<\/strong>(.+)/i.match(closing)[1]
-  
-  on_notice_to = Date.parse(exhibition_closes).strftime('%Y-%m-%d')
+site = "https://eplanning.cityofsydney.nsw.gov.au"
+url = "https://eplanning.cityofsydney.nsw.gov.au/Pages/XC.Track/SearchApplication.aspx?e=y"
+
+page = agent.get(url)
+puts "#{url} loaded"
+csvTable = page.at(".csvTable")
+count = 0
+
+csvTable.element_children.map.each do |application|
+  next if application['class'] == "headerRow"
+  count = count + 1
+
+  info_url = application.at("#applicationReference a")['href'].squish.sub("../..",site)
+  # split bad concat addresses by strings that look like postcodes, but include the string we split on in the result 
+  addresses = application.at("#applicationAddress").inner_text.squish.split(/(NSW \d{4})/).each_slice(2).map(&:join)
 
   record = {
-    "address" => item.title.gsub(' *NEW*',''),
-    "description" => description,
-    "date_received" => item.pubDate.strftime('%Y-%m-%d'),
-    "on_notice_to" => on_notice_to,
-    "council_reference" => council_ref,
+    "address" => addresses.first,
+    "description" => application.at("#applicationDetails").inner_text.squish,
+    "date_received" => convert_date(application.at("#lodgementDate").inner_text.squish),
+    "on_notice_to" => convert_date(application.at("#exhibitionCloseDate").inner_text.squish),
+    "council_reference" => application.at("#applicationReference a").inner_text.squish,
     "info_url" => info_url,
     "comment_url" => "mailto:dasubmissions@cityofsydney.nsw.gov.au",
     "date_scraped" => Date.today.to_s
   }
-
+  puts record
   ScraperWiki.save_sqlite(['council_reference'], record)
 end
+
+# Return number of applications found
+puts count
