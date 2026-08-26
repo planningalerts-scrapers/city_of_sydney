@@ -18,6 +18,14 @@ end
 
 agent = Mechanize.new
 
+if ENV["MORPH_AUSTRALIAN_PROXY"]
+  # On morph.io set the environment variable MORPH_AUSTRALIAN_PROXY to
+  # http://morph:password@au.proxy.oaf.org.au:8888 replacing password with
+  # the real password.
+  puts "Using Australian proxy..."
+  agent.agent.set_proxy(ENV["MORPH_AUSTRALIAN_PROXY"])
+end
+
 site = "https://eplanning.cityofsydney.nsw.gov.au"
 url = "https://eplanning.cityofsydney.nsw.gov.au/Pages/XC.Track/SearchApplication.aspx?e=y"
 
