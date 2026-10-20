@@ -1,0 +1,22 @@
+# Morph.io builds this scraper on the heroku-18 stack (see the platform file).
+# Newer versions of the gems below do NOT run on heroku-18, so Dependabot must
+# not propose them. The same caps are in the Gemfile.
+#
+# Ruby is pinned to 3.2.2 in the Gemfile for the same reason (ruby 3.2.3
+# does NOT run on heroku-18). The Ruby version is not a gem, so it cannot
+# be listed here.
+#
+# open-pull-requests-limit: 0 turns off routine version-update PRs, so this
+# config only shapes security-update PRs.
+version: 2
+updates:
+  - package-ecosystem: "bundler"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+    ignore:
+      - dependency-name: "nokogiri"
+        versions: [">= 1.18"]
+      - dependency-name: "sqlite3"
+        versions: [">= 2.3"]
